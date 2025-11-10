@@ -354,4 +354,8 @@ app.MapGet("/api/attendance/stats/summary", async (AppDbContext db,
 .Produces<StatsSummaryDto>(StatusCodes.Status200OK)
 .Produces(StatusCodes.Status500InternalServerError);
 
+// Configure port from environment variable (for Render) or default to 5000
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+app.Urls.Add($"http://0.0.0.0:{port}");
+
 app.Run();
