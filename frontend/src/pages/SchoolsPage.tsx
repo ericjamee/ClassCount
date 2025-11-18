@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getSchools, createSchool } from '../api/schoolApi';
+import { getSchools, createSchool, updateSchool, deleteSchool } from '../api/schoolApi';
 import type { SchoolDto } from '../types';
 import TextInput from '../components/TextInput';
 import './SchoolsPage.css';
 
 /**
- * Admin page for managing schools
+ * Admin page for managing schools with CRUD operations
  */
 export default function SchoolsPage() {
   const [schools, setSchools] = useState<SchoolDto[]>([]);
@@ -18,6 +18,11 @@ export default function SchoolsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
+
+  // Edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRegion, setEditRegion] = useState('');
 
   // Load schools on mount
   useEffect(() => {
@@ -81,12 +86,74 @@ export default function SchoolsPage() {
     }
   };
 
+  const handleEdit = (school: SchoolDto) => {
+    setEditingId(school.id);
+    setEditName(school.name);
+    setEditRegion(school.region || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditRegion('');
+  };
+
+  const handleSaveEdit = async (id: number) => {
+    if (!editName.trim()) {
+      alert('School name is required');
+      return;
+    }
+
+    try {
+      await updateSchool(id, {
+        name: editName.trim(),
+        region: editRegion.trim() || undefined,
+      });
+
+      setEditingId(null);
+      setEditName('');
+      setEditRegion('');
+      setSuccessMessage('School updated successfully!');
+      await loadSchools();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update school. Please try again.'
+      );
+    }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteSchool(id);
+      setSuccessMessage('School deleted successfully!');
+      await loadSchools();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete school. Please try again.'
+      );
+    }
+  };
+
   return (
     <div className="schools-page">
       <h2 className="page-title">Manage Schools</h2>
       <p className="page-description">
-        Add schools that teachers can select when recording attendance. This ensures consistent school names.
+        Add, edit, or delete schools that teachers can select when recording attendance. This ensures consistent school names.
       </p>
+
+      {successMessage && (
+        <div className="message message-success">{successMessage}</div>
+      )}
 
       {/* Add School Form */}
       <div className="add-school-section">
@@ -108,10 +175,6 @@ export default function SchoolsPage() {
             placeholder="Optional"
             maxLength={100}
           />
-
-          {successMessage && (
-            <div className="message message-success">{successMessage}</div>
-          )}
 
           {submitError && (
             <div className="message message-error">{submitError}</div>
@@ -154,16 +217,76 @@ export default function SchoolsPage() {
                       <th>School Name</th>
                       <th>Region</th>
                       <th>Added</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {schools.map((school) => (
                       <tr key={school.id}>
-                        <td>{school.name}</td>
-                        <td>{school.region || '-'}</td>
-                        <td>
-                          {new Date(school.createdAt).toLocaleDateString()}
-                        </td>
+                        {editingId === school.id ? (
+                          <>
+                            <td>
+                              <input
+                                type="text"
+                                className="edit-input"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                required
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="edit-input"
+                                value={editRegion}
+                                onChange={(e) => setEditRegion(e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              {new Date(school.createdAt).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                <button
+                                  onClick={() => handleSaveEdit(school.id)}
+                                  className="action-button action-button-save"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="action-button action-button-cancel"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td>{school.name}</td>
+                            <td>{school.region || '-'}</td>
+                            <td>
+                              {new Date(school.createdAt).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                <button
+                                  onClick={() => handleEdit(school)}
+                                  className="action-button action-button-edit"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(school.id, school.name)}
+                                  className="action-button action-button-delete"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -176,4 +299,3 @@ export default function SchoolsPage() {
     </div>
   );
 }
-

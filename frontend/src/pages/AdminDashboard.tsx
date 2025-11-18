@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getStatsSummary } from '../api/attendanceApi';
+import { getStatsSummary, getAttendanceRecords } from '../api/attendanceApi';
 import type { StatsSummaryDto } from '../types';
 import SummaryCard from '../components/SummaryCard';
 import SchoolChart from '../components/SchoolChart';
+import { exportToCSV, exportStatsToCSV } from '../utils/exportUtils';
 import './AdminDashboard.css';
 
 /**
@@ -47,6 +48,39 @@ export default function AdminDashboard() {
 
   const handleApplyFilters = () => {
     loadStats();
+  };
+
+  const handleExportData = async () => {
+    try {
+      const records = await getAttendanceRecords({
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        schoolName: schoolNameFilter || undefined,
+        region: regionFilter || undefined,
+      });
+      
+      const dateRange = startDate && endDate 
+        ? `${startDate}_to_${endDate}` 
+        : new Date().toISOString().split('T')[0];
+      
+      exportToCSV(records, `attendance-data-${dateRange}.csv`);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to export data. Please try again.'
+      );
+    }
+  };
+
+  const handleExportStats = () => {
+    if (!stats) return;
+    
+    const dateRange = startDate && endDate 
+      ? `${startDate}_to_${endDate}` 
+      : new Date().toISOString().split('T')[0];
+    
+    exportStatsToCSV(stats, `attendance-stats-${dateRange}.csv`);
   };
 
   // Filter school summaries by school name
@@ -109,9 +143,14 @@ export default function AdminDashboard() {
             />
           </div>
         </div>
-        <button onClick={handleApplyFilters} className="apply-button">
-          Apply Filters
-        </button>
+        <div className="filters-actions">
+          <button onClick={handleApplyFilters} className="apply-button">
+            Apply Filters
+          </button>
+          <button onClick={handleExportData} className="export-button">
+            📥 Export Data (CSV)
+          </button>
+        </div>
       </div>
 
       {/* Loading state */}
@@ -154,7 +193,12 @@ export default function AdminDashboard() {
 
           {/* School Summaries Table */}
           <div className="table-section">
-            <h3 className="section-title">By School</h3>
+            <div className="table-header">
+              <h3 className="section-title">By School</h3>
+              <button onClick={handleExportStats} className="export-button-small">
+                📥 Export Stats
+              </button>
+            </div>
             {filteredSchoolSummaries.length > 0 ? (
               <div className="table-container">
                 <table className="stats-table">

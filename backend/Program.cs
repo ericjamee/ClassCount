@@ -161,6 +161,107 @@ app.MapPost("/api/schools", async (AppDbContext db, CreateSchoolDto dto) =>
 .Produces(StatusCodes.Status400BadRequest)
 .Produces(StatusCodes.Status500InternalServerError);
 
+// PUT /api/schools/{id} - Update an existing school
+app.MapPut("/api/schools/{id}", async (AppDbContext db, int id, CreateSchoolDto dto) =>
+{
+    // Server-side validation
+    var validationResults = new List<ValidationResult>();
+    var validationContext = new ValidationContext(dto);
+    
+    if (!Validator.TryValidateObject(dto, validationContext, validationResults, true))
+    {
+        return Results.BadRequest(new { errors = validationResults.Select(v => v.ErrorMessage) });
+    }
+    
+    var school = await db.Schools.FindAsync(id);
+    if (school == null)
+    {
+        return Results.NotFound();
+    }
+    
+    // Trim and validate
+    var name = dto.Name.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { errors = new[] { "School name is required" } });
+    }
+    
+    // Check if another school with same name already exists
+    var existingSchool = await db.Schools.FirstOrDefaultAsync(s => s.Name == name && s.Id != id);
+    if (existingSchool != null)
+    {
+        return Results.BadRequest(new { errors = new[] { "A school with this name already exists" } });
+    }
+    
+    try
+    {
+        school.Name = name;
+        school.Region = string.IsNullOrWhiteSpace(dto.Region) ? null : dto.Region.Trim();
+        
+        await db.SaveChangesAsync();
+        
+        return Results.Ok(new SchoolDto
+        {
+            Id = school.Id,
+            Name = school.Name,
+            Region = school.Region,
+            CreatedAt = school.CreatedAt
+        });
+    }
+    catch (DbUpdateException ex)
+    {
+        Console.WriteLine($"Error updating school: {ex.Message}");
+        return Results.BadRequest(new { errors = new[] { "A school with this name already exists" } });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error updating school: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("UpdateSchool")
+.Produces<SchoolDto>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// DELETE /api/schools/{id} - Delete a school
+app.MapDelete("/api/schools/{id}", async (AppDbContext db, int id) =>
+{
+    try
+    {
+        var school = await db.Schools
+            .Include(s => s.AttendanceRecords)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        
+        if (school == null)
+        {
+            return Results.NotFound();
+        }
+        
+        // Check if school has attendance records
+        if (school.AttendanceRecords.Any())
+        {
+            return Results.BadRequest(new { errors = new[] { "Cannot delete school with existing attendance records" } });
+        }
+        
+        db.Schools.Remove(school);
+        await db.SaveChangesAsync();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error deleting school: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("DeleteSchool")
+.Produces(StatusCodes.Status204NoContent)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
 // ========== ATTENDANCE ENDPOINTS ==========
 
 // POST /api/attendance - Create a new attendance record

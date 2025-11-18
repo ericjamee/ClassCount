@@ -185,14 +185,23 @@ export default function TeacherPage() {
             )}
           </div>
 
-          <TextInput
-            label="Grade"
-            value={grade}
-            onChange={setGrade}
-            required
-            placeholder="e.g., Grade 1, Class 3"
-            maxLength={100}
-          />
+          <div className="form-group">
+            <label className="form-label">
+              Grade <span className="required">*</span>
+            </label>
+            <select
+              className="form-input form-select"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              required
+            >
+              <option value="">Select a grade...</option>
+              <option value="Primary">Primary</option>
+              <option value="JHS">JHS</option>
+              <option value="Creche">Creche</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
           <NumberInput
             label="Number of Students"
