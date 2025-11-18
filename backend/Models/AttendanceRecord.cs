@@ -18,6 +18,16 @@ public class AttendanceRecord
     public School School { get; set; } = null!;
     
     /// <summary>
+    /// Foreign key to the Teacher (required)
+    /// </summary>
+    public int TeacherId { get; set; }
+    
+    /// <summary>
+    /// Navigation property to the Teacher
+    /// </summary>
+    public Teacher Teacher { get; set; } = null!;
+    
+    /// <summary>
     /// Grade or class level (required, max 100 characters)
     /// </summary>
     public string Grade { get; set; } = string.Empty;

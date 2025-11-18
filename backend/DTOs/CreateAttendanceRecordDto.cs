@@ -10,6 +10,9 @@ public class CreateAttendanceRecordDto
     [Required(ErrorMessage = "School ID is required")]
     public int SchoolId { get; set; }
     
+    [Required(ErrorMessage = "Teacher ID is required")]
+    public int TeacherId { get; set; }
+    
     [Required(ErrorMessage = "Grade is required")]
     [StringLength(100, ErrorMessage = "Grade cannot exceed 100 characters")]
     public string Grade { get; set; } = string.Empty;

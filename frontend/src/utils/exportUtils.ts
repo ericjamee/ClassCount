@@ -2,16 +2,18 @@ import type { AttendanceRecordDto } from '../types';
 
 /**
  * Export attendance records to CSV format
+ * Each row represents one attendance entry
  */
 export function exportToCSV(records: AttendanceRecordDto[], filename: string = 'attendance-data.csv') {
   // CSV header
-  const headers = ['ID', 'School Name', 'School Region', 'Grade', 'Student Count', 'Date', 'Created At'];
+  const headers = ['ID', 'School Name', 'School Region', 'Teacher Name', 'Grade', 'Student Count', 'Date', 'Created At'];
   
-  // Convert records to CSV rows
+  // Convert records to CSV rows (one row per attendance entry)
   const rows = records.map(record => [
     record.id.toString(),
     `"${record.schoolName.replace(/"/g, '""')}"`, // Escape quotes in CSV
     record.schoolRegion ? `"${record.schoolRegion.replace(/"/g, '""')}"` : '',
+    `"${record.teacherName.replace(/"/g, '""')}"`,
     `"${record.grade.replace(/"/g, '""')}"`,
     record.studentCount.toString(),
     record.date,

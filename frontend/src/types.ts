@@ -14,8 +14,21 @@ export interface CreateSchoolDto {
   region?: string;
 }
 
+export interface TeacherDto {
+  id: number;
+  schoolId: number;
+  name: string;
+  createdAt: string; // ISO datetime string
+}
+
+export interface CreateTeacherDto {
+  name: string;
+  schoolId: number;
+}
+
 export interface CreateAttendanceRecordDto {
   schoolId: number;
+  teacherId: number;
   grade: string;
   studentCount: number;
   date: string; // ISO date string (YYYY-MM-DD)
@@ -26,6 +39,8 @@ export interface AttendanceRecordDto {
   schoolId: number;
   schoolName: string;
   schoolRegion?: string;
+  teacherId: number;
+  teacherName: string;
   grade: string;
   studentCount: number;
   date: string; // ISO date string (YYYY-MM-DD)

@@ -64,6 +64,8 @@ static AttendanceRecordDto MapToDto(AttendanceRecord record) => new()
     SchoolId = record.SchoolId,
     SchoolName = record.School.Name,
     SchoolRegion = record.School.Region,
+    TeacherId = record.TeacherId,
+    TeacherName = record.Teacher.Name,
     Grade = record.Grade,
     StudentCount = record.StudentCount,
     Date = record.Date,
@@ -262,6 +264,189 @@ app.MapDelete("/api/schools/{id}", async (AppDbContext db, int id) =>
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status500InternalServerError);
 
+// ========== TEACHER MANAGEMENT ENDPOINTS ==========
+
+// GET /api/schools/{schoolId}/teachers - Get all teachers for a school
+app.MapGet("/api/schools/{schoolId}/teachers", async (AppDbContext db, int schoolId) =>
+{
+    try
+    {
+        var teachers = await db.Teachers
+            .Where(t => t.SchoolId == schoolId)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+        
+        return Results.Ok(teachers.Select(t => new TeacherDto
+        {
+            Id = t.Id,
+            SchoolId = t.SchoolId,
+            Name = t.Name,
+            CreatedAt = t.CreatedAt
+        }).ToList());
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error retrieving teachers: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("GetTeachersBySchool")
+.Produces<List<TeacherDto>>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// POST /api/teachers - Create a new teacher
+app.MapPost("/api/teachers", async (AppDbContext db, CreateTeacherDto dto) =>
+{
+    // Server-side validation
+    var validationResults = new List<ValidationResult>();
+    var validationContext = new ValidationContext(dto);
+    
+    if (!Validator.TryValidateObject(dto, validationContext, validationResults, true))
+    {
+        return Results.BadRequest(new { errors = validationResults.Select(v => v.ErrorMessage) });
+    }
+    
+    // Verify school exists
+    var school = await db.Schools.FindAsync(dto.SchoolId);
+    if (school == null)
+    {
+        return Results.BadRequest(new { errors = new[] { "Invalid school ID" } });
+    }
+    
+    // Trim and validate
+    var name = dto.Name.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { errors = new[] { "Teacher name is required" } });
+    }
+    
+    try
+    {
+        var teacher = new Teacher
+        {
+            SchoolId = dto.SchoolId,
+            Name = name,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        db.Teachers.Add(teacher);
+        await db.SaveChangesAsync();
+        
+        return Results.Created($"/api/teachers/{teacher.Id}", new TeacherDto
+        {
+            Id = teacher.Id,
+            SchoolId = teacher.SchoolId,
+            Name = teacher.Name,
+            CreatedAt = teacher.CreatedAt
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error saving teacher: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("CreateTeacher")
+.Produces<TeacherDto>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// PUT /api/teachers/{id} - Update an existing teacher
+app.MapPut("/api/teachers/{id}", async (AppDbContext db, int id, CreateTeacherDto dto) =>
+{
+    // Server-side validation
+    var validationResults = new List<ValidationResult>();
+    var validationContext = new ValidationContext(dto);
+    
+    if (!Validator.TryValidateObject(dto, validationContext, validationResults, true))
+    {
+        return Results.BadRequest(new { errors = validationResults.Select(v => v.ErrorMessage) });
+    }
+    
+    var teacher = await db.Teachers.FindAsync(id);
+    if (teacher == null)
+    {
+        return Results.NotFound();
+    }
+    
+    // Verify school exists
+    var school = await db.Schools.FindAsync(dto.SchoolId);
+    if (school == null)
+    {
+        return Results.BadRequest(new { errors = new[] { "Invalid school ID" } });
+    }
+    
+    // Trim and validate
+    var name = dto.Name.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { errors = new[] { "Teacher name is required" } });
+    }
+    
+    try
+    {
+        teacher.Name = name;
+        teacher.SchoolId = dto.SchoolId;
+        
+        await db.SaveChangesAsync();
+        
+        return Results.Ok(new TeacherDto
+        {
+            Id = teacher.Id,
+            SchoolId = teacher.SchoolId,
+            Name = teacher.Name,
+            CreatedAt = teacher.CreatedAt
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error updating teacher: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("UpdateTeacher")
+.Produces<TeacherDto>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// DELETE /api/teachers/{id} - Delete a teacher
+app.MapDelete("/api/teachers/{id}", async (AppDbContext db, int id) =>
+{
+    try
+    {
+        var teacher = await db.Teachers
+            .Include(t => t.AttendanceRecords)
+            .FirstOrDefaultAsync(t => t.Id == id);
+        
+        if (teacher == null)
+        {
+            return Results.NotFound();
+        }
+        
+        // Check if teacher has attendance records
+        if (teacher.AttendanceRecords.Any())
+        {
+            return Results.BadRequest(new { errors = new[] { "Cannot delete teacher with existing attendance records" } });
+        }
+        
+        db.Teachers.Remove(teacher);
+        await db.SaveChangesAsync();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error deleting teacher: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("DeleteTeacher")
+.Produces(StatusCodes.Status204NoContent)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
 // ========== ATTENDANCE ENDPOINTS ==========
 
 // POST /api/attendance - Create a new attendance record
@@ -283,11 +468,23 @@ app.MapPost("/api/attendance", async (AppDbContext db, CreateAttendanceRecordDto
         return Results.BadRequest(new { errors = new[] { "Invalid school ID" } });
     }
     
+    // Verify teacher exists and belongs to the school
+    var teacher = await db.Teachers.FindAsync(dto.TeacherId);
+    if (teacher == null)
+    {
+        return Results.BadRequest(new { errors = new[] { "Invalid teacher ID" } });
+    }
+    if (teacher.SchoolId != dto.SchoolId)
+    {
+        return Results.BadRequest(new { errors = new[] { "Teacher does not belong to the selected school" } });
+    }
+    
     try
     {
         var record = new AttendanceRecord
         {
             SchoolId = dto.SchoolId,
+            TeacherId = dto.TeacherId,
             Grade = dto.Grade.Trim(),
             StudentCount = dto.StudentCount,
             Date = dto.Date,
@@ -297,8 +494,9 @@ app.MapPost("/api/attendance", async (AppDbContext db, CreateAttendanceRecordDto
         db.AttendanceRecords.Add(record);
         await db.SaveChangesAsync();
         
-        // Load school for DTO mapping
+        // Load school and teacher for DTO mapping
         await db.Entry(record).Reference(r => r.School).LoadAsync();
+        await db.Entry(record).Reference(r => r.Teacher).LoadAsync();
         
         return Results.Created($"/api/attendance/{record.Id}", MapToDto(record));
     }
@@ -326,6 +524,7 @@ app.MapGet("/api/attendance", async (AppDbContext db,
     {
         var query = db.AttendanceRecords
             .Include(r => r.School)
+            .Include(r => r.Teacher)
             .AsQueryable();
         
         // Apply filters
@@ -416,10 +615,9 @@ app.MapGet("/api/attendance/stats/summary", async (AppDbContext db,
             });
         }
         
-        // Calculate overall stats
+        // Calculate overall stats (removed TotalStudents - it's not a meaningful metric)
         var totalSubmissions = records.Count;
-        var totalStudents = records.Sum(r => r.StudentCount);
-        var averageStudents = totalSubmissions > 0 ? (double)totalStudents / totalSubmissions : 0;
+        var averageStudents = totalSubmissions > 0 ? records.Average(r => (double)r.StudentCount) : 0;
         
         // Group by school
         var schoolSummaries = records
@@ -427,11 +625,11 @@ app.MapGet("/api/attendance/stats/summary", async (AppDbContext db,
             .Select(g => new SchoolSummaryDto
             {
                 SchoolName = g.Key,
-                TotalStudents = g.Sum(r => r.StudentCount),
+                TotalStudents = 0, // Not used anymore, but keeping for backward compatibility
                 SubmissionsCount = g.Count(),
-                AverageStudents = g.Count() > 0 ? (double)g.Sum(r => r.StudentCount) / g.Count() : 0
+                AverageStudents = g.Average(r => (double)r.StudentCount)
             })
-            .OrderByDescending(s => s.TotalStudents)
+            .OrderByDescending(s => s.SubmissionsCount)
             .ToList();
         
         // Group by region (only records with region)
@@ -441,17 +639,17 @@ app.MapGet("/api/attendance/stats/summary", async (AppDbContext db,
             .Select(g => new RegionSummaryDto
             {
                 Region = g.Key,
-                TotalStudents = g.Sum(r => r.StudentCount),
+                TotalStudents = 0, // Not used anymore, but keeping for backward compatibility
                 SubmissionsCount = g.Count(),
-                AverageStudents = g.Count() > 0 ? (double)g.Sum(r => r.StudentCount) / g.Count() : 0
+                AverageStudents = g.Average(r => (double)r.StudentCount)
             })
-            .OrderByDescending(r => r.TotalStudents)
+            .OrderByDescending(r => r.SubmissionsCount)
             .ToList();
         
         var summary = new StatsSummaryDto
         {
             TotalSubmissions = totalSubmissions,
-            TotalStudents = totalStudents,
+            TotalStudents = 0, // Removed - not a meaningful metric
             AverageStudentsPerRecord = averageStudents,
             SchoolSummaries = schoolSummaries,
             RegionSummaries = regionSummaries

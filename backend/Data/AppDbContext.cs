@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     }
     
     public DbSet<School> Schools { get; set; }
+    public DbSet<Teacher> Teachers { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -38,6 +39,25 @@ public class AppDbContext : DbContext
                 .IsRequired();
         });
         
+        // Configure Teacher entity
+        modelBuilder.Entity<Teacher>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+            
+            // Configure relationship with School
+            entity.HasOne(e => e.School)
+                .WithMany(s => s.Teachers)
+                .HasForeignKey(e => e.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting schools with teachers
+        });
+        
         // Configure AttendanceRecord entity
         modelBuilder.Entity<AttendanceRecord>(entity =>
         {
@@ -61,6 +81,12 @@ public class AppDbContext : DbContext
                 .WithMany(s => s.AttendanceRecords)
                 .HasForeignKey(e => e.SchoolId)
                 .OnDelete(DeleteBehavior.Restrict); // Prevent deleting schools with attendance records
+            
+            // Configure relationship with Teacher
+            entity.HasOne(e => e.Teacher)
+                .WithMany(t => t.AttendanceRecords)
+                .HasForeignKey(e => e.TeacherId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting teachers with attendance records
         });
     }
 }

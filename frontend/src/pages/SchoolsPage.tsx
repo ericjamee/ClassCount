@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { getSchools, createSchool, updateSchool, deleteSchool } from '../api/schoolApi';
-import type { SchoolDto } from '../types';
+import { getTeachersBySchool, createTeacher, updateTeacher, deleteTeacher } from '../api/teacherApi';
+import type { SchoolDto, TeacherDto } from '../types';
 import TextInput from '../components/TextInput';
 import './SchoolsPage.css';
 
 /**
- * Admin page for managing schools with CRUD operations
+ * Admin page for managing schools with CRUD operations and teacher management
  */
 export default function SchoolsPage() {
   const [schools, setSchools] = useState<SchoolDto[]>([]);
@@ -23,6 +24,14 @@ export default function SchoolsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editRegion, setEditRegion] = useState('');
+
+  // Teacher management state
+  const [expandedSchoolId, setExpandedSchoolId] = useState<number | null>(null);
+  const [teachers, setTeachers] = useState<Record<number, TeacherDto[]>>({});
+  const [loadingTeachers, setLoadingTeachers] = useState<Record<number, boolean>>({});
+  const [newTeacherName, setNewTeacherName] = useState<Record<number, string>>({});
+  const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
+  const [editTeacherName, setEditTeacherName] = useState('');
 
   // Load schools on mount
   useEffect(() => {
@@ -44,6 +53,29 @@ export default function SchoolsPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTeachers = async (schoolId: number) => {
+    setLoadingTeachers(prev => ({ ...prev, [schoolId]: true }));
+    try {
+      const data = await getTeachersBySchool(schoolId);
+      setTeachers(prev => ({ ...prev, [schoolId]: data }));
+    } catch (err) {
+      console.error('Failed to load teachers:', err);
+    } finally {
+      setLoadingTeachers(prev => ({ ...prev, [schoolId]: false }));
+    }
+  };
+
+  const handleToggleSchool = (schoolId: number) => {
+    if (expandedSchoolId === schoolId) {
+      setExpandedSchoolId(null);
+    } else {
+      setExpandedSchoolId(schoolId);
+      if (!teachers[schoolId]) {
+        loadTeachers(schoolId);
+      }
     }
   };
 
@@ -144,11 +176,76 @@ export default function SchoolsPage() {
     }
   };
 
+  const handleAddTeacher = async (schoolId: number) => {
+    const name = newTeacherName[schoolId]?.trim();
+    if (!name) {
+      alert('Teacher name is required');
+      return;
+    }
+
+    try {
+      await createTeacher({ name, schoolId });
+      setNewTeacherName(prev => ({ ...prev, [schoolId]: '' }));
+      await loadTeachers(schoolId);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add teacher. Please try again.'
+      );
+    }
+  };
+
+  const handleEditTeacher = (teacher: TeacherDto) => {
+    setEditingTeacherId(teacher.id);
+    setEditTeacherName(teacher.name);
+  };
+
+  const handleSaveTeacher = async (teacherId: number, schoolId: number) => {
+    if (!editTeacherName.trim()) {
+      alert('Teacher name is required');
+      return;
+    }
+
+    try {
+      await updateTeacher(teacherId, {
+        name: editTeacherName.trim(),
+        schoolId,
+      });
+      setEditingTeacherId(null);
+      setEditTeacherName('');
+      await loadTeachers(schoolId);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update teacher. Please try again.'
+      );
+    }
+  };
+
+  const handleDeleteTeacher = async (teacherId: number, schoolId: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteTeacher(teacherId);
+      await loadTeachers(schoolId);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete teacher. Please try again.'
+      );
+    }
+  };
+
   return (
     <div className="schools-page">
       <h2 className="page-title">Manage Schools</h2>
       <p className="page-description">
-        Add, edit, or delete schools that teachers can select when recording attendance. This ensures consistent school names.
+        Add, edit, or delete schools and manage teachers for each school.
       </p>
 
       {successMessage && (
@@ -210,87 +307,161 @@ export default function SchoolsPage() {
             {schools.length === 0 ? (
               <p className="no-data">No schools added yet. Add your first school above.</p>
             ) : (
-              <div className="schools-table-container">
-                <table className="schools-table">
-                  <thead>
-                    <tr>
-                      <th>School Name</th>
-                      <th>Region</th>
-                      <th>Added</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schools.map((school) => (
-                      <tr key={school.id}>
-                        {editingId === school.id ? (
-                          <>
-                            <td>
-                              <input
-                                type="text"
-                                className="edit-input"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                required
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                className="edit-input"
-                                value={editRegion}
-                                onChange={(e) => setEditRegion(e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              {new Date(school.createdAt).toLocaleDateString()}
-                            </td>
-                            <td>
-                              <div className="action-buttons">
-                                <button
-                                  onClick={() => handleSaveEdit(school.id)}
-                                  className="action-button action-button-save"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className="action-button action-button-cancel"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </td>
-                          </>
+              <div className="schools-list">
+                {schools.map((school) => (
+                  <div key={school.id} className="school-card">
+                    <div className="school-card-header">
+                      {editingId === school.id ? (
+                        <div className="school-edit-form">
+                          <input
+                            type="text"
+                            className="edit-input"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            required
+                          />
+                          <input
+                            type="text"
+                            className="edit-input"
+                            value={editRegion}
+                            onChange={(e) => setEditRegion(e.target.value)}
+                            placeholder="Region (optional)"
+                          />
+                          <div className="action-buttons">
+                            <button
+                              onClick={() => handleSaveEdit(school.id)}
+                              className="action-button action-button-save"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="action-button action-button-cancel"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="school-info">
+                            <h4 className="school-name">{school.name}</h4>
+                            {school.region && <span className="school-region">{school.region}</span>}
+                          </div>
+                          <div className="action-buttons">
+                            <button
+                              onClick={() => handleEdit(school)}
+                              className="action-button action-button-edit"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(school.id, school.name)}
+                              className="action-button action-button-delete"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => handleToggleSchool(school.id)}
+                              className="action-button action-button-teachers"
+                            >
+                              {expandedSchoolId === school.id ? '▼' : '▶'} Teachers
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {expandedSchoolId === school.id && (
+                      <div className="teachers-section">
+                        <h5 className="teachers-title">Teachers</h5>
+                        
+                        {loadingTeachers[school.id] ? (
+                          <div className="loading-message-small">Loading teachers...</div>
                         ) : (
                           <>
-                            <td>{school.name}</td>
-                            <td>{school.region || '-'}</td>
-                            <td>
-                              {new Date(school.createdAt).toLocaleDateString()}
-                            </td>
-                            <td>
-                              <div className="action-buttons">
-                                <button
-                                  onClick={() => handleEdit(school)}
-                                  className="action-button action-button-edit"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(school.id, school.name)}
-                                  className="action-button action-button-delete"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
+                            {/* Add Teacher Form */}
+                            <div className="add-teacher-form">
+                              <input
+                                type="text"
+                                className="teacher-input"
+                                value={newTeacherName[school.id] || ''}
+                                onChange={(e) => setNewTeacherName(prev => ({ ...prev, [school.id]: e.target.value }))}
+                                placeholder="Teacher name"
+                                maxLength={200}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddTeacher(school.id)}
+                                className="action-button action-button-save"
+                              >
+                                Add Teacher
+                              </button>
+                            </div>
+
+                            {/* Teachers List */}
+                            {teachers[school.id] && teachers[school.id].length > 0 ? (
+                              <ul className="teachers-list">
+                                {teachers[school.id].map((teacher) => (
+                                  <li key={teacher.id} className="teacher-item">
+                                    {editingTeacherId === teacher.id ? (
+                                      <div className="teacher-edit-form">
+                                        <input
+                                          type="text"
+                                          className="teacher-input"
+                                          value={editTeacherName}
+                                          onChange={(e) => setEditTeacherName(e.target.value)}
+                                          required
+                                        />
+                                        <div className="action-buttons">
+                                          <button
+                                            onClick={() => handleSaveTeacher(teacher.id, school.id)}
+                                            className="action-button action-button-save"
+                                          >
+                                            Save
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setEditingTeacherId(null);
+                                              setEditTeacherName('');
+                                            }}
+                                            className="action-button action-button-cancel"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span className="teacher-name">{teacher.name}</span>
+                                        <div className="action-buttons">
+                                          <button
+                                            onClick={() => handleEditTeacher(teacher)}
+                                            className="action-button action-button-edit"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteTeacher(teacher.id, school.id, teacher.name)}
+                                            className="action-button action-button-delete"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="no-teachers">No teachers added yet. Add a teacher above.</p>
+                            )}
                           </>
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </>

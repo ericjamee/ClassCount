@@ -23,6 +23,11 @@ public class School
     public DateTime CreatedAt { get; set; }
     
     /// <summary>
+    /// Navigation property for teachers
+    /// </summary>
+    public ICollection<Teacher> Teachers { get; set; } = new List<Teacher>();
+    
+    /// <summary>
     /// Navigation property for attendance records
     /// </summary>
     public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();

@@ -1,5 +1,5 @@
 .schools-page {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -148,62 +148,72 @@
   font-size: 1.0625rem;
 }
 
-.schools-table-container {
-  overflow-x: auto;
+.schools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.school-card {
+  border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
 }
 
-.schools-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
+.school-card:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.schools-table thead {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+.school-card-header {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
 }
 
-.schools-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 700;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-  font-size: 0.8125rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+.school-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
 }
 
-.schools-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
-  font-weight: 500;
+.school-name {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-.schools-table tbody tr {
-  transition: background-color 0.15s ease;
+.school-region {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
 }
 
-.schools-table tbody tr:hover {
-  background-color: #f8fafc;
-}
-
-.schools-table tbody tr:last-child td {
-  border-bottom: none;
+.school-edit-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
 }
 
 .edit-input {
-  width: 100%;
   padding: 0.5rem;
   border: 1.5px solid #cbd5e1;
   border-radius: 0.375rem;
   font-size: 0.9375rem;
+  flex: 1;
+  min-width: 150px;
 }
 
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .action-button {
@@ -214,6 +224,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .action-button-edit {
@@ -256,6 +267,88 @@
   transform: translateY(-1px);
 }
 
+.action-button-teachers {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.action-button-teachers:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.teachers-section {
+  padding: 1.25rem;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+}
+
+.teachers-title {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.add-teacher-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.teacher-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+}
+
+.teachers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.teacher-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 0.375rem;
+}
+
+.teacher-name {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.teacher-edit-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+}
+
+.loading-message-small {
+  padding: 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.no-teachers {
+  padding: 1rem;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
 @media (max-width: 640px) {
   .page-title {
     font-size: 1.75rem;
@@ -265,12 +358,17 @@
     padding: 1.75rem;
   }
 
-  .schools-table {
-    font-size: 0.875rem;
+  .school-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
-  .schools-table th,
-  .schools-table td {
-    padding: 0.75rem 0.5rem;
+  .action-buttons {
+    width: 100%;
+  }
+
+  .action-button {
+    flex: 1;
   }
 }

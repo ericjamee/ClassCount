@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createAttendanceRecord } from '../api/attendanceApi';
 import { getSchools } from '../api/schoolApi';
-import type { SchoolDto } from '../types';
+import { getTeachersBySchool } from '../api/teacherApi';
+import type { SchoolDto, TeacherDto } from '../types';
 import NumberInput from '../components/NumberInput';
 import DateInput from '../components/DateInput';
 import './TeacherPage.css';
@@ -16,7 +17,7 @@ export default function TeacherPage() {
     try {
       const saved = localStorage.getItem(`attendance_${key}`);
       if (saved !== null) {
-        return key === 'schoolId' ? parseInt(saved, 10) : saved;
+        return key === 'schoolId' || key === 'teacherId' ? parseInt(saved, 10) : saved;
       }
       return defaultValue;
     } catch {
@@ -30,6 +31,12 @@ export default function TeacherPage() {
 
   const [schoolId, setSchoolId] = useState<number>(() => {
     const saved = loadPersistedValue('schoolId', 0) as number;
+    return saved || 0;
+  });
+  const [teachers, setTeachers] = useState<TeacherDto[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [teacherId, setTeacherId] = useState<number>(() => {
+    const saved = loadPersistedValue('teacherId', 0) as number;
     return saved || 0;
   });
   const [grade, setGrade] = useState(() => loadPersistedValue('grade', '') as string);
@@ -48,6 +55,16 @@ export default function TeacherPage() {
   useEffect(() => {
     loadSchools();
   }, []);
+
+  // Load teachers when school changes
+  useEffect(() => {
+    if (schoolId && schoolId !== 0) {
+      loadTeachers(schoolId);
+    } else {
+      setTeachers([]);
+      setTeacherId(0);
+    }
+  }, [schoolId]);
 
   const loadSchools = async () => {
     setLoadingSchools(true);
@@ -72,16 +89,38 @@ export default function TeacherPage() {
     }
   };
 
+  const loadTeachers = async (schoolId: number) => {
+    setLoadingTeachers(true);
+    try {
+      const data = await getTeachersBySchool(schoolId);
+      setTeachers(data);
+      
+      // If no teacher is selected but there are teachers, select the first one
+      if (teacherId === 0 && data.length > 0) {
+        setTeacherId(data[0].id);
+      } else if (data.length > 0 && !data.find(t => t.id === teacherId)) {
+        // If current teacher doesn't belong to this school, select first teacher
+        setTeacherId(data[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load teachers:', err);
+      setTeachers([]);
+    } finally {
+      setLoadingTeachers(false);
+    }
+  };
+
   // Persist form values to localStorage (except studentCount and date)
   useEffect(() => {
     try {
       if (schoolId) localStorage.setItem('attendance_schoolId', schoolId.toString());
+      if (teacherId) localStorage.setItem('attendance_teacherId', teacherId.toString());
       if (grade) localStorage.setItem('attendance_grade', grade);
     } catch (error) {
       // localStorage might not be available, ignore
       console.warn('Failed to save to localStorage:', error);
     }
-  }, [schoolId, grade]);
+  }, [schoolId, teacherId, grade]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +128,10 @@ export default function TeacherPage() {
     // Front-end validation
     if (!schoolId || schoolId === 0) {
       setErrorMessage('Please select a school');
+      return;
+    }
+    if (!teacherId || teacherId === 0) {
+      setErrorMessage('Please select a teacher');
       return;
     }
     if (!grade.trim()) {
@@ -111,6 +154,7 @@ export default function TeacherPage() {
     try {
       await createAttendanceRecord({
         schoolId,
+        teacherId,
         grade: grade.trim(),
         studentCount,
         date,
@@ -141,7 +185,7 @@ export default function TeacherPage() {
     <div className="teacher-page">
       <h2 className="page-title">Record Attendance</h2>
       <p className="page-description">
-        Submit attendance records for your class. Select your school from the list below.
+        Submit attendance records for your class. Select your school and teacher from the lists below.
       </p>
 
       {schoolsError && (
@@ -183,6 +227,35 @@ export default function TeacherPage() {
               <div className="form-hint">Region: {selectedSchool.region}</div>
             )}
           </div>
+
+          {schoolId && schoolId !== 0 && (
+            <div className="form-group">
+              <label className="form-label">
+                Teacher <span className="required">*</span>
+              </label>
+              {loadingTeachers ? (
+                <div className="loading-message-small">Loading teachers...</div>
+              ) : teachers.length === 0 ? (
+                <div className="message message-error">
+                  No teachers available for this school. Please contact an administrator to add teachers.
+                </div>
+              ) : (
+                <select
+                  className="form-input form-select"
+                  value={teacherId}
+                  onChange={(e) => setTeacherId(parseInt(e.target.value, 10))}
+                  required
+                >
+                  <option value={0}>Select a teacher...</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">
@@ -241,7 +314,7 @@ export default function TeacherPage() {
           <button
             type="submit"
             className="submit-button"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !teacherId || teacherId === 0}
           >
             {isSubmitting ? 'Sending...' : 'Submit Attendance'}
           </button>

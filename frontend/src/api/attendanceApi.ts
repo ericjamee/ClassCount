@@ -18,6 +18,7 @@ export async function createAttendanceRecord(
     },
     body: JSON.stringify({
       schoolId: data.schoolId,
+      teacherId: data.teacherId,
       grade: data.grade,
       studentCount: data.studentCount,
       date: data.date,

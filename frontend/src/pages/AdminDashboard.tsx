@@ -177,10 +177,6 @@ export default function AdminDashboard() {
               value={stats.totalSubmissions}
             />
             <SummaryCard
-              title="Total Students"
-              value={stats.totalStudents.toLocaleString()}
-            />
-            <SummaryCard
               title="Average per Submission"
               value={stats.averageStudentsPerRecord.toFixed(1)}
             />
@@ -206,7 +202,6 @@ export default function AdminDashboard() {
                     <tr>
                       <th>School</th>
                       <th>Submissions</th>
-                      <th>Total Students</th>
                       <th>Avg Students</th>
                     </tr>
                   </thead>
@@ -215,7 +210,6 @@ export default function AdminDashboard() {
                       <tr key={school.schoolName}>
                         <td>{school.schoolName}</td>
                         <td>{school.submissionsCount}</td>
-                        <td>{school.totalStudents}</td>
                         <td>{school.averageStudents.toFixed(1)}</td>
                       </tr>
                     ))}
@@ -238,7 +232,6 @@ export default function AdminDashboard() {
                       <tr>
                         <th>Region</th>
                         <th>Submissions</th>
-                        <th>Total Students</th>
                         <th>Avg Students</th>
                       </tr>
                     </thead>
@@ -247,7 +240,6 @@ export default function AdminDashboard() {
                         <tr key={region.region}>
                           <td>{region.region}</td>
                           <td>{region.submissionsCount}</td>
-                          <td>{region.totalStudents}</td>
                           <td>{region.averageStudents.toFixed(1)}</td>
                         </tr>
                       ))}
