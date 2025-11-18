@@ -49,11 +49,10 @@ export function exportStatsToCSV(
   stats: { schoolSummaries: Array<{ schoolName: string; totalStudents: number; submissionsCount: number; averageStudents: number }> },
   filename: string = 'attendance-stats.csv'
 ) {
-  const headers = ['School Name', 'Total Students', 'Submissions', 'Average Students'];
+  const headers = ['School Name', 'Submissions', 'Average Students'];
   
   const rows = stats.schoolSummaries.map(school => [
     `"${school.schoolName.replace(/"/g, '""')}"`,
-    school.totalStudents.toString(),
     school.submissionsCount.toString(),
     school.averageStudents.toFixed(2)
   ]);
