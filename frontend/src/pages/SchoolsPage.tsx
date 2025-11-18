@@ -5,7 +5,6 @@ import { getTeachersBySchool, createTeacher, updateTeacher, deleteTeacher } from
 import { getClassesByTeacher, createClass, updateClass, deleteClass } from '../api/classApi';
 import type { SchoolDto, TeacherDto, ClassDto } from '../types';
 import TextInput from '../components/TextInput';
-import NumberInput from '../components/NumberInput';
 import './SchoolsPage.css';
 
 /**
