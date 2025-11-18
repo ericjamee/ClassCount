@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { createAttendanceRecord } from '../api/attendanceApi';
 import { getSchools } from '../api/schoolApi';
 import type { SchoolDto } from '../types';
-import TextInput from '../components/TextInput';
 import NumberInput from '../components/NumberInput';
 import DateInput from '../components/DateInput';
 import './TeacherPage.css';
