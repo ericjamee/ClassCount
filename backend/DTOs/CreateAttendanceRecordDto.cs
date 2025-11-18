@@ -13,6 +13,11 @@ public class CreateAttendanceRecordDto
     [Required(ErrorMessage = "Teacher ID is required")]
     public int TeacherId { get; set; }
     
+    /// <summary>
+    /// Optional class ID - if provided, links attendance to a specific class
+    /// </summary>
+    public int? ClassId { get; set; }
+    
     [Required(ErrorMessage = "Grade is required")]
     [StringLength(100, ErrorMessage = "Grade cannot exceed 100 characters")]
     public string Grade { get; set; } = string.Empty;
@@ -23,5 +28,11 @@ public class CreateAttendanceRecordDto
     
     [Required(ErrorMessage = "Date is required")]
     public DateOnly Date { get; set; }
+    
+    /// <summary>
+    /// Optional note from the teacher (max 500 characters)
+    /// </summary>
+    [StringLength(500, ErrorMessage = "Note cannot exceed 500 characters")]
+    public string? Note { get; set; }
 }
 

@@ -28,6 +28,16 @@ public class AttendanceRecord
     public Teacher Teacher { get; set; } = null!;
     
     /// <summary>
+    /// Foreign key to the Class (optional - for tracking specific class enrollment)
+    /// </summary>
+    public int? ClassId { get; set; }
+    
+    /// <summary>
+    /// Navigation property to the Class
+    /// </summary>
+    public Class? Class { get; set; }
+    
+    /// <summary>
     /// Grade or class level (required, max 100 characters)
     /// </summary>
     public string Grade { get; set; } = string.Empty;
@@ -41,6 +51,11 @@ public class AttendanceRecord
     /// Date of attendance (date only)
     /// </summary>
     public DateOnly Date { get; set; }
+    
+    /// <summary>
+    /// Optional note from the teacher (max 500 characters)
+    /// </summary>
+    public string? Note { get; set; }
     
     /// <summary>
     /// UTC timestamp when the record was created

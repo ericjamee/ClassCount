@@ -66,9 +66,12 @@ static AttendanceRecordDto MapToDto(AttendanceRecord record) => new()
     SchoolRegion = record.School.Region,
     TeacherId = record.TeacherId,
     TeacherName = record.Teacher.Name,
+    ClassId = record.ClassId,
+    ClassName = record.Class?.Name,
     Grade = record.Grade,
     StudentCount = record.StudentCount,
     Date = record.Date,
+    Note = record.Note,
     CreatedAt = record.CreatedAt
 };
 
@@ -447,6 +450,189 @@ app.MapDelete("/api/teachers/{id}", async (AppDbContext db, int id) =>
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status500InternalServerError);
 
+// ========== CLASS MANAGEMENT ENDPOINTS ==========
+
+// GET /api/teachers/{teacherId}/classes - Get all classes for a teacher
+app.MapGet("/api/teachers/{teacherId}/classes", async (AppDbContext db, int teacherId) =>
+{
+    try
+    {
+        var classes = await db.Classes
+            .Where(c => c.TeacherId == teacherId)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+        
+        return Results.Ok(classes.Select(c => new ClassDto
+        {
+            Id = c.Id,
+            TeacherId = c.TeacherId,
+            Name = c.Name,
+            Enrollment = c.Enrollment,
+            CreatedAt = c.CreatedAt
+        }).ToList());
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error retrieving classes: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("GetClassesByTeacher")
+.Produces<List<ClassDto>>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// POST /api/classes - Create a new class
+app.MapPost("/api/classes", async (AppDbContext db, CreateClassDto dto) =>
+{
+    // Server-side validation
+    var validationResults = new List<ValidationResult>();
+    var validationContext = new ValidationContext(dto);
+    
+    if (!Validator.TryValidateObject(dto, validationContext, validationResults, true))
+    {
+        return Results.BadRequest(new { errors = validationResults.Select(v => v.ErrorMessage) });
+    }
+    
+    // Verify teacher exists
+    var teacher = await db.Teachers.FindAsync(dto.TeacherId);
+    if (teacher == null)
+    {
+        return Results.BadRequest(new { errors = new[] { "Invalid teacher ID" } });
+    }
+    
+    // Trim and validate
+    var name = dto.Name.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { errors = new[] { "Class name is required" } });
+    }
+    
+    try
+    {
+        var classEntity = new Class
+        {
+            TeacherId = dto.TeacherId,
+            Name = name,
+            Enrollment = dto.Enrollment,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        db.Classes.Add(classEntity);
+        await db.SaveChangesAsync();
+        
+        return Results.Created($"/api/classes/{classEntity.Id}", new ClassDto
+        {
+            Id = classEntity.Id,
+            TeacherId = classEntity.TeacherId,
+            Name = classEntity.Name,
+            Enrollment = classEntity.Enrollment,
+            CreatedAt = classEntity.CreatedAt
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error saving class: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("CreateClass")
+.Produces<ClassDto>(StatusCodes.Status201Created)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// PUT /api/classes/{id} - Update an existing class
+app.MapPut("/api/classes/{id}", async (AppDbContext db, int id, CreateClassDto dto) =>
+{
+    // Server-side validation
+    var validationResults = new List<ValidationResult>();
+    var validationContext = new ValidationContext(dto);
+    
+    if (!Validator.TryValidateObject(dto, validationContext, validationResults, true))
+    {
+        return Results.BadRequest(new { errors = validationResults.Select(v => v.ErrorMessage) });
+    }
+    
+    var classEntity = await db.Classes.FindAsync(id);
+    if (classEntity == null)
+    {
+        return Results.NotFound();
+    }
+    
+    // Verify teacher exists
+    var teacher = await db.Teachers.FindAsync(dto.TeacherId);
+    if (teacher == null)
+    {
+        return Results.BadRequest(new { errors = new[] { "Invalid teacher ID" } });
+    }
+    
+    // Trim and validate
+    var name = dto.Name.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest(new { errors = new[] { "Class name is required" } });
+    }
+    
+    try
+    {
+        classEntity.Name = name;
+        classEntity.Enrollment = dto.Enrollment;
+        classEntity.TeacherId = dto.TeacherId;
+        
+        await db.SaveChangesAsync();
+        
+        return Results.Ok(new ClassDto
+        {
+            Id = classEntity.Id,
+            TeacherId = classEntity.TeacherId,
+            Name = classEntity.Name,
+            Enrollment = classEntity.Enrollment,
+            CreatedAt = classEntity.CreatedAt
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error updating class: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("UpdateClass")
+.Produces<ClassDto>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status400BadRequest)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
+// DELETE /api/classes/{id} - Delete a class
+app.MapDelete("/api/classes/{id}", async (AppDbContext db, int id) =>
+{
+    try
+    {
+        var classEntity = await db.Classes
+            .Include(c => c.AttendanceRecords)
+            .FirstOrDefaultAsync(c => c.Id == id);
+        
+        if (classEntity == null)
+        {
+            return Results.NotFound();
+        }
+        
+        // Classes can be deleted even if they have attendance records
+        // The ClassId will be set to null in those records (DeleteBehavior.SetNull)
+        db.Classes.Remove(classEntity);
+        await db.SaveChangesAsync();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error deleting class: {ex.Message}");
+        return Results.StatusCode(500);
+    }
+})
+.WithName("DeleteClass")
+.Produces(StatusCodes.Status204NoContent)
+.Produces(StatusCodes.Status404NotFound)
+.Produces(StatusCodes.Status500InternalServerError);
+
 // ========== ATTENDANCE ENDPOINTS ==========
 
 // POST /api/attendance - Create a new attendance record
@@ -479,24 +665,45 @@ app.MapPost("/api/attendance", async (AppDbContext db, CreateAttendanceRecordDto
         return Results.BadRequest(new { errors = new[] { "Teacher does not belong to the selected school" } });
     }
     
+    // Verify class exists and belongs to the teacher (if provided)
+    Class? classEntity = null;
+    if (dto.ClassId.HasValue)
+    {
+        classEntity = await db.Classes.FindAsync(dto.ClassId.Value);
+        if (classEntity == null)
+        {
+            return Results.BadRequest(new { errors = new[] { "Invalid class ID" } });
+        }
+        if (classEntity.TeacherId != dto.TeacherId)
+        {
+            return Results.BadRequest(new { errors = new[] { "Class does not belong to the selected teacher" } });
+        }
+    }
+    
     try
     {
         var record = new AttendanceRecord
         {
             SchoolId = dto.SchoolId,
             TeacherId = dto.TeacherId,
+            ClassId = dto.ClassId,
             Grade = dto.Grade.Trim(),
             StudentCount = dto.StudentCount,
             Date = dto.Date,
+            Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim(),
             CreatedAt = DateTime.UtcNow
         };
         
         db.AttendanceRecords.Add(record);
         await db.SaveChangesAsync();
         
-        // Load school and teacher for DTO mapping
+        // Load related entities for DTO mapping
         await db.Entry(record).Reference(r => r.School).LoadAsync();
         await db.Entry(record).Reference(r => r.Teacher).LoadAsync();
+        if (record.ClassId.HasValue)
+        {
+            await db.Entry(record).Reference(r => r.Class).LoadAsync();
+        }
         
         return Results.Created($"/api/attendance/{record.Id}", MapToDto(record));
     }
@@ -525,6 +732,7 @@ app.MapGet("/api/attendance", async (AppDbContext db,
         var query = db.AttendanceRecords
             .Include(r => r.School)
             .Include(r => r.Teacher)
+            .Include(r => r.Class)
             .AsQueryable();
         
         // Apply filters

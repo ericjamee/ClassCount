@@ -1,36 +1,36 @@
 namespace backend.Models;
 
 /// <summary>
-/// Represents a teacher associated with a school.
+/// Represents a class taught by a teacher.
 /// </summary>
-public class Teacher
+public class Class
 {
     public int Id { get; set; }
     
     /// <summary>
-    /// Foreign key to the School (required)
+    /// Foreign key to the Teacher (required)
     /// </summary>
-    public int SchoolId { get; set; }
+    public int TeacherId { get; set; }
     
     /// <summary>
-    /// Navigation property to the School
+    /// Navigation property to the Teacher
     /// </summary>
-    public School School { get; set; } = null!;
+    public Teacher Teacher { get; set; } = null!;
     
     /// <summary>
-    /// Teacher's full name (required, max 200 characters)
+    /// Class name or identifier (required, max 200 characters)
     /// </summary>
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// UTC timestamp when the teacher was created
+    /// Enrollment number - total students enrolled in this class (required, >= 0)
     /// </summary>
-    public DateTime CreatedAt { get; set; }
+    public int Enrollment { get; set; }
     
     /// <summary>
-    /// Navigation property for classes
+    /// UTC timestamp when the class was created
     /// </summary>
-    public ICollection<Class> Classes { get; set; } = new List<Class>();
+    public DateTime CreatedAt { get; set; }
     
     /// <summary>
     /// Navigation property for attendance records

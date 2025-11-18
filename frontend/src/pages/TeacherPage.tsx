@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { createAttendanceRecord } from '../api/attendanceApi';
 import { getSchools } from '../api/schoolApi';
 import { getTeachersBySchool } from '../api/teacherApi';
-import type { SchoolDto, TeacherDto } from '../types';
+import { getClassesByTeacher } from '../api/classApi';
+import type { SchoolDto, TeacherDto, ClassDto } from '../types';
 import NumberInput from '../components/NumberInput';
 import DateInput from '../components/DateInput';
 import './TeacherPage.css';
@@ -39,8 +40,15 @@ export default function TeacherPage() {
     const saved = loadPersistedValue('teacherId', 0) as number;
     return saved || 0;
   });
+  const [classes, setClasses] = useState<ClassDto[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [classId, setClassId] = useState<number | undefined>(() => {
+    const saved = loadPersistedValue('classId', 0) as number;
+    return saved && saved !== 0 ? saved : undefined;
+  });
   const [grade, setGrade] = useState(() => loadPersistedValue('grade', '') as string);
   const [studentCount, setStudentCount] = useState(0);
+  const [note, setNote] = useState('');
   const [date, setDate] = useState(() => {
     // Default to today's date in YYYY-MM-DD format
     const today = new Date();
@@ -63,8 +71,20 @@ export default function TeacherPage() {
     } else {
       setTeachers([]);
       setTeacherId(0);
+      setClasses([]);
+      setClassId(undefined);
     }
   }, [schoolId]);
+
+  // Load classes when teacher changes
+  useEffect(() => {
+    if (teacherId && teacherId !== 0) {
+      loadClasses(teacherId);
+    } else {
+      setClasses([]);
+      setClassId(undefined);
+    }
+  }, [teacherId]);
 
   const loadSchools = async () => {
     setLoadingSchools(true);
@@ -110,17 +130,37 @@ export default function TeacherPage() {
     }
   };
 
-  // Persist form values to localStorage (except studentCount and date)
+  const loadClasses = async (teacherId: number) => {
+    setLoadingClasses(true);
+    try {
+      const data = await getClassesByTeacher(teacherId);
+      setClasses(data);
+      
+      // If a class was previously selected but doesn't exist for this teacher, clear it
+      if (classId && !data.find(c => c.id === classId)) {
+        setClassId(undefined);
+      }
+    } catch (err) {
+      console.error('Failed to load classes:', err);
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  // Persist form values to localStorage (except studentCount, date, and note)
   useEffect(() => {
     try {
       if (schoolId) localStorage.setItem('attendance_schoolId', schoolId.toString());
       if (teacherId) localStorage.setItem('attendance_teacherId', teacherId.toString());
+      if (classId) localStorage.setItem('attendance_classId', classId.toString());
+      else localStorage.removeItem('attendance_classId');
       if (grade) localStorage.setItem('attendance_grade', grade);
     } catch (error) {
       // localStorage might not be available, ignore
       console.warn('Failed to save to localStorage:', error);
     }
-  }, [schoolId, teacherId, grade]);
+  }, [schoolId, teacherId, classId, grade]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,13 +195,16 @@ export default function TeacherPage() {
       await createAttendanceRecord({
         schoolId,
         teacherId,
+        classId: classId,
         grade: grade.trim(),
         studentCount,
         date,
+        note: note.trim() || undefined,
       });
 
-      // Success - clear studentCount and date, show success message
+      // Success - clear studentCount, date, and note, show success message
       setStudentCount(0);
+      setNote('');
       const today = new Date();
       setDate(today.toISOString().split('T')[0]);
       setSuccessMessage('Attendance saved successfully!');
@@ -257,6 +300,32 @@ export default function TeacherPage() {
             </div>
           )}
 
+          {teacherId && teacherId !== 0 && (
+            <div className="form-group">
+              <label className="form-label">
+                Class (Optional)
+              </label>
+              {loadingClasses ? (
+                <div className="loading-message-small">Loading classes...</div>
+              ) : classes.length === 0 ? (
+                <div className="form-hint">No classes available. You can add classes in "Manage Schools".</div>
+              ) : (
+                <select
+                  className="form-input form-select"
+                  value={classId || ''}
+                  onChange={(e) => setClassId(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                >
+                  <option value="">No class selected (optional)</option>
+                  {classes.map((classItem) => (
+                    <option key={classItem.id} value={classItem.id}>
+                      {classItem.name} (Enrollment: {classItem.enrollment})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">
               Grade <span className="required">*</span>
@@ -290,6 +359,21 @@ export default function TeacherPage() {
             onChange={setDate}
             required
           />
+
+          <div className="form-group">
+            <label className="form-label">
+              Note (Optional)
+            </label>
+            <textarea
+              className="form-input form-textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add any additional notes..."
+              maxLength={500}
+              rows={3}
+            />
+            <div className="form-hint">{note.length}/500 characters</div>
+          </div>
 
           {successMessage && (
             <div className="message message-success">{successMessage}</div>

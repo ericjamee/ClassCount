@@ -26,12 +26,28 @@ export interface CreateTeacherDto {
   schoolId: number;
 }
 
+export interface ClassDto {
+  id: number;
+  teacherId: number;
+  name: string;
+  enrollment: number;
+  createdAt: string; // ISO datetime string
+}
+
+export interface CreateClassDto {
+  name: string;
+  enrollment: number;
+  teacherId: number;
+}
+
 export interface CreateAttendanceRecordDto {
   schoolId: number;
   teacherId: number;
+  classId?: number; // Optional
   grade: string;
   studentCount: number;
   date: string; // ISO date string (YYYY-MM-DD)
+  note?: string; // Optional
 }
 
 export interface AttendanceRecordDto {
@@ -41,9 +57,12 @@ export interface AttendanceRecordDto {
   schoolRegion?: string;
   teacherId: number;
   teacherName: string;
+  classId?: number;
+  className?: string;
   grade: string;
   studentCount: number;
   date: string; // ISO date string (YYYY-MM-DD)
+  note?: string;
   createdAt: string; // ISO datetime string
 }
 

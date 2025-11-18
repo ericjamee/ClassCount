@@ -11,9 +11,12 @@ public class AttendanceRecordDto
     public string? SchoolRegion { get; set; }
     public int TeacherId { get; set; }
     public string TeacherName { get; set; } = string.Empty;
+    public int? ClassId { get; set; }
+    public string? ClassName { get; set; }
     public string Grade { get; set; } = string.Empty;
     public int StudentCount { get; set; }
     public DateOnly Date { get; set; }
+    public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

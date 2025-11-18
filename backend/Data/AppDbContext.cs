@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     
     public DbSet<School> Schools { get; set; }
     public DbSet<Teacher> Teachers { get; set; }
+    public DbSet<Class> Classes { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -58,6 +59,28 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict); // Prevent deleting schools with teachers
         });
         
+        // Configure Class entity
+        modelBuilder.Entity<Class>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Enrollment)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+            
+            // Configure relationship with Teacher
+            entity.HasOne(e => e.Teacher)
+                .WithMany(t => t.Classes)
+                .HasForeignKey(e => e.TeacherId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting teachers with classes
+        });
+        
         // Configure AttendanceRecord entity
         modelBuilder.Entity<AttendanceRecord>(entity =>
         {
@@ -76,6 +99,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
             
+            entity.Property(e => e.Note)
+                .HasMaxLength(500);
+            
             // Configure relationship with School
             entity.HasOne(e => e.School)
                 .WithMany(s => s.AttendanceRecords)
@@ -87,6 +113,12 @@ public class AppDbContext : DbContext
                 .WithMany(t => t.AttendanceRecords)
                 .HasForeignKey(e => e.TeacherId)
                 .OnDelete(DeleteBehavior.Restrict); // Prevent deleting teachers with attendance records
+            
+            // Configure relationship with Class (optional)
+            entity.HasOne(e => e.Class)
+                .WithMany(c => c.AttendanceRecords)
+                .HasForeignKey(e => e.ClassId)
+                .OnDelete(DeleteBehavior.SetNull); // Allow deleting classes, set ClassId to null
         });
     }
 }

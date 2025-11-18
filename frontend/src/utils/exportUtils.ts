@@ -6,7 +6,7 @@ import type { AttendanceRecordDto } from '../types';
  */
 export function exportToCSV(records: AttendanceRecordDto[], filename: string = 'attendance-data.csv') {
   // CSV header
-  const headers = ['ID', 'School Name', 'School Region', 'Teacher Name', 'Grade', 'Student Count', 'Date', 'Created At'];
+  const headers = ['ID', 'School Name', 'School Region', 'Teacher Name', 'Class Name', 'Grade', 'Student Count', 'Date', 'Note', 'Created At'];
   
   // Convert records to CSV rows (one row per attendance entry)
   const rows = records.map(record => [
@@ -14,9 +14,11 @@ export function exportToCSV(records: AttendanceRecordDto[], filename: string = '
     `"${record.schoolName.replace(/"/g, '""')}"`, // Escape quotes in CSV
     record.schoolRegion ? `"${record.schoolRegion.replace(/"/g, '""')}"` : '',
     `"${record.teacherName.replace(/"/g, '""')}"`,
+    record.className ? `"${record.className.replace(/"/g, '""')}"` : '',
     `"${record.grade.replace(/"/g, '""')}"`,
     record.studentCount.toString(),
     record.date,
+    record.note ? `"${record.note.replace(/"/g, '""')}"` : '',
     new Date(record.createdAt).toLocaleString()
   ]);
   

@@ -19,9 +19,11 @@ export async function createAttendanceRecord(
     body: JSON.stringify({
       schoolId: data.schoolId,
       teacherId: data.teacherId,
+      classId: data.classId,
       grade: data.grade,
       studentCount: data.studentCount,
       date: data.date,
+      note: data.note,
     }),
   });
 
