@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import { getSchools, createSchool, updateSchool, deleteSchool } from '../api/schoolApi';
 import { getTeachersBySchool, createTeacher, updateTeacher, deleteTeacher } from '../api/teacherApi';
 import { getClassesByTeacher, createClass, updateClass, deleteClass } from '../api/classApi';
@@ -530,171 +531,173 @@ export default function SchoolsPage() {
                             {teachers[school.id] && teachers[school.id].length > 0 ? (
                               <ul className="teachers-list">
                                 {teachers[school.id].map((teacher) => (
-                                  <li key={teacher.id} className="teacher-item">
-                                    {editingTeacherId === teacher.id ? (
-                                      <div className="teacher-edit-form">
-                                        <input
-                                          type="text"
-                                          className="teacher-input"
-                                          value={editTeacherName}
-                                          onChange={(e) => setEditTeacherName(e.target.value)}
-                                          required
-                                        />
-                                        <div className="action-buttons">
-                                          <button
-                                            onClick={() => handleSaveTeacher(teacher.id, school.id)}
-                                            className="action-button action-button-save"
-                                          >
-                                            Save
-                                          </button>
-                                          <button
-                                            onClick={() => {
-                                              setEditingTeacherId(null);
-                                              setEditTeacherName('');
-                                            }}
-                                            className="action-button action-button-cancel"
-                                          >
-                                            Cancel
-                                          </button>
+                                  <React.Fragment key={teacher.id}>
+                                    <li className="teacher-item">
+                                      {editingTeacherId === teacher.id ? (
+                                        <div className="teacher-edit-form">
+                                          <input
+                                            type="text"
+                                            className="teacher-input"
+                                            value={editTeacherName}
+                                            onChange={(e) => setEditTeacherName(e.target.value)}
+                                            required
+                                          />
+                                          <div className="action-buttons">
+                                            <button
+                                              onClick={() => handleSaveTeacher(teacher.id, school.id)}
+                                              className="action-button action-button-save"
+                                            >
+                                              Save
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setEditingTeacherId(null);
+                                                setEditTeacherName('');
+                                              }}
+                                              className="action-button action-button-cancel"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
                                         </div>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <div className="teacher-info">
-                                          <span className="teacher-name">{teacher.name}</span>
-                                          <button
-                                            onClick={() => handleToggleTeacher(teacher.id)}
-                                            className="action-button action-button-classes"
-                                          >
-                                            {expandedTeacherId === teacher.id ? '▼' : '▶'} Classes
-                                          </button>
-                                        </div>
-                                        <div className="action-buttons">
-                                          <button
-                                            onClick={() => handleEditTeacher(teacher)}
-                                            className="action-button action-button-edit"
-                                          >
-                                            Edit
-                                          </button>
-                                          <button
-                                            onClick={() => handleDeleteTeacher(teacher.id, school.id, teacher.name)}
-                                            className="action-button action-button-delete"
-                                          >
-                                            Delete
-                                          </button>
-                                        </div>
-                                      </>
-                                    )}
-                                  </li>
-                                  {expandedTeacherId === teacher.id && (
-                                    <li className="classes-section-item">
-                                      <div className="classes-section">
-                                        <h6 className="classes-title">Classes for {teacher.name}</h6>
-                                        
-                                        {loadingClasses[teacher.id] ? (
-                                          <div className="loading-message-small">Loading classes...</div>
-                                        ) : (
-                                          <>
-                                            {/* Add Class Form */}
-                                            <div className="add-class-form">
-                                              <input
-                                                type="text"
-                                                className="class-input"
-                                                value={newClassName[teacher.id] || ''}
-                                                onChange={(e) => setNewClassName(prev => ({ ...prev, [teacher.id]: e.target.value }))}
-                                                placeholder="Class name"
-                                                maxLength={200}
-                                              />
-                                              <input
-                                                type="number"
-                                                className="class-input class-input-number"
-                                                value={newClassEnrollment[teacher.id] || 0}
-                                                onChange={(e) => setNewClassEnrollment(prev => ({ ...prev, [teacher.id]: parseInt(e.target.value, 10) || 0 }))}
-                                                placeholder="Enrollment"
-                                                min="0"
-                                                max="500"
-                                              />
-                                              <button
-                                                type="button"
-                                                onClick={() => handleAddClass(teacher.id)}
-                                                className="action-button action-button-save"
-                                              >
-                                                Add Class
-                                              </button>
-                                            </div>
-
-                                            {/* Classes List */}
-                                            {classes[teacher.id] && classes[teacher.id].length > 0 ? (
-                                              <ul className="classes-list">
-                                                {classes[teacher.id].map((classItem) => (
-                                                  <li key={classItem.id} className="class-item">
-                                                    {editingClassId === classItem.id ? (
-                                                      <div className="class-edit-form">
-                                                        <input
-                                                          type="text"
-                                                          className="class-input"
-                                                          value={editClassName}
-                                                          onChange={(e) => setEditClassName(e.target.value)}
-                                                          required
-                                                        />
-                                                        <input
-                                                          type="number"
-                                                          className="class-input class-input-number"
-                                                          value={editClassEnrollment}
-                                                          onChange={(e) => setEditClassEnrollment(parseInt(e.target.value, 10) || 0)}
-                                                          min="0"
-                                                          max="500"
-                                                        />
-                                                        <div className="action-buttons">
-                                                          <button
-                                                            onClick={() => handleSaveClass(classItem.id, teacher.id)}
-                                                            className="action-button action-button-save"
-                                                          >
-                                                            Save
-                                                          </button>
-                                                          <button
-                                                            onClick={() => {
-                                                              setEditingClassId(null);
-                                                              setEditClassName('');
-                                                              setEditClassEnrollment(0);
-                                                            }}
-                                                            className="action-button action-button-cancel"
-                                                          >
-                                                            Cancel
-                                                          </button>
-                                                        </div>
-                                                      </div>
-                                                    ) : (
-                                                      <>
-                                                        <span className="class-name">{classItem.name}</span>
-                                                        <span className="class-enrollment">Enrollment: {classItem.enrollment}</span>
-                                                        <div className="action-buttons">
-                                                          <button
-                                                            onClick={() => handleEditClass(classItem)}
-                                                            className="action-button action-button-edit"
-                                                          >
-                                                            Edit
-                                                          </button>
-                                                          <button
-                                                            onClick={() => handleDeleteClass(classItem.id, teacher.id, classItem.name)}
-                                                            className="action-button action-button-delete"
-                                                          >
-                                                            Delete
-                                                          </button>
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                  </li>
-                                                ))}
-                                              </ul>
-                                            ) : (
-                                              <p className="no-classes">No classes added yet. Add a class above.</p>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
+                                      ) : (
+                                        <>
+                                          <div className="teacher-info">
+                                            <span className="teacher-name">{teacher.name}</span>
+                                            <button
+                                              onClick={() => handleToggleTeacher(teacher.id)}
+                                              className="action-button action-button-classes"
+                                            >
+                                              {expandedTeacherId === teacher.id ? '▼' : '▶'} Classes
+                                            </button>
+                                          </div>
+                                          <div className="action-buttons">
+                                            <button
+                                              onClick={() => handleEditTeacher(teacher)}
+                                              className="action-button action-button-edit"
+                                            >
+                                              Edit
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteTeacher(teacher.id, school.id, teacher.name)}
+                                              className="action-button action-button-delete"
+                                            >
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
                                     </li>
-                                  )}
+                                    {expandedTeacherId === teacher.id && (
+                                      <li className="classes-section-item">
+                                        <div className="classes-section">
+                                          <h6 className="classes-title">Classes for {teacher.name}</h6>
+                                          
+                                          {loadingClasses[teacher.id] ? (
+                                            <div className="loading-message-small">Loading classes...</div>
+                                          ) : (
+                                            <>
+                                              {/* Add Class Form */}
+                                              <div className="add-class-form">
+                                                <input
+                                                  type="text"
+                                                  className="class-input"
+                                                  value={newClassName[teacher.id] || ''}
+                                                  onChange={(e) => setNewClassName(prev => ({ ...prev, [teacher.id]: e.target.value }))}
+                                                  placeholder="Class name"
+                                                  maxLength={200}
+                                                />
+                                                <input
+                                                  type="number"
+                                                  className="class-input class-input-number"
+                                                  value={newClassEnrollment[teacher.id] || 0}
+                                                  onChange={(e) => setNewClassEnrollment(prev => ({ ...prev, [teacher.id]: parseInt(e.target.value, 10) || 0 }))}
+                                                  placeholder="Enrollment"
+                                                  min="0"
+                                                  max="500"
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleAddClass(teacher.id)}
+                                                  className="action-button action-button-save"
+                                                >
+                                                  Add Class
+                                                </button>
+                                              </div>
+
+                                              {/* Classes List */}
+                                              {classes[teacher.id] && classes[teacher.id].length > 0 ? (
+                                                <ul className="classes-list">
+                                                  {classes[teacher.id].map((classItem) => (
+                                                    <li key={classItem.id} className="class-item">
+                                                      {editingClassId === classItem.id ? (
+                                                        <div className="class-edit-form">
+                                                          <input
+                                                            type="text"
+                                                            className="class-input"
+                                                            value={editClassName}
+                                                            onChange={(e) => setEditClassName(e.target.value)}
+                                                            required
+                                                          />
+                                                          <input
+                                                            type="number"
+                                                            className="class-input class-input-number"
+                                                            value={editClassEnrollment}
+                                                            onChange={(e) => setEditClassEnrollment(parseInt(e.target.value, 10) || 0)}
+                                                            min="0"
+                                                            max="500"
+                                                          />
+                                                          <div className="action-buttons">
+                                                            <button
+                                                              onClick={() => handleSaveClass(classItem.id, teacher.id)}
+                                                              className="action-button action-button-save"
+                                                            >
+                                                              Save
+                                                            </button>
+                                                            <button
+                                                              onClick={() => {
+                                                                setEditingClassId(null);
+                                                                setEditClassName('');
+                                                                setEditClassEnrollment(0);
+                                                              }}
+                                                              className="action-button action-button-cancel"
+                                                            >
+                                                              Cancel
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      ) : (
+                                                        <>
+                                                          <span className="class-name">{classItem.name}</span>
+                                                          <span className="class-enrollment">Enrollment: {classItem.enrollment}</span>
+                                                          <div className="action-buttons">
+                                                            <button
+                                                              onClick={() => handleEditClass(classItem)}
+                                                              className="action-button action-button-edit"
+                                                            >
+                                                              Edit
+                                                            </button>
+                                                            <button
+                                                              onClick={() => handleDeleteClass(classItem.id, teacher.id, classItem.name)}
+                                                              className="action-button action-button-delete"
+                                                            >
+                                                              Delete
+                                                            </button>
+                                                          </div>
+                                                        </>
+                                                      )}
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                              ) : (
+                                                <p className="no-classes">No classes added yet. Add a class above.</p>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
+                                      </li>
+                                    )}
+                                  </React.Fragment>
                                 ))}
                               </ul>
                             ) : (
